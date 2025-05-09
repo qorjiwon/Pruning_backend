@@ -1,2 +1,3 @@
 grape_segmentation_model_training
 __pycache__
+.env
