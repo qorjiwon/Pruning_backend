@@ -163,14 +163,15 @@ def get_chatgpt_comment_with_image(base64_image_str: Optional[str], num_pruning_
             "이 이미지와 추천된 가지치기 작업이 포도나무의 건강 증진, 미래의 포도송이 크기 및 당도 향상, 그리고 전반적인 수확량 증대에 "
             "어떤 긍정적인 영향을 미칠 것으로 기대되는지, 농부에게 희망을 주고 이해하기 쉬운 낙관적인 코멘트를 1~2문장으로 작성해주세요. "
             "전문적인 수치 예측보다는 일반적인 기대 효과와 격려의 메시지에 초점을 맞춰주세요."
+            "이미지를 보고, 아래 형식에 맞게 답해라. '1.식물 이름 (단답) , 2.현재 계절 (단답), 3.언제쯤 가지치기가 적절한지 (문장 형태), 4.해당 식물의 가지치기 원칙. (넘버링) 5.이미지 기반 분석, 6.전정 순서 제안 (넘버링)'"
         )
         messages_payload = [
-            {"role": "system", "content": "당신은 농업, 특히 포도 재배에 대한 지식을 바탕으로 사용자에게 긍정적이고 희망적인 조언을 해주는 AI 어시스턴트입니다."},
+            {"role": "system", "content": "당신은 농업, 특히 포도 재배에 대한 지식을 바탕으로 객관적인 정보를 제공하고 사용자에게 조언을 해주는 AI 어시스턴트입니다."},
             {"role": "user", "content": [{"type": "text", "text": prompt_text},
                                        {"type": "image_url", "image_url": {"url": base64_image_str, "detail": "low"}}]}
         ]
         chat_completion = client.chat.completions.create(
-            messages=messages_payload, model="gpt-4o-mini", max_tokens=185, temperature=0.75, n=1
+            messages=messages_payload, model="gpt-4o-mini", max_tokens=500, temperature=0.85, n=1
         )
         return chat_completion.choices[0].message.content.strip()
     except Exception as e:
