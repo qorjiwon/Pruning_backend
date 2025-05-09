@@ -123,7 +123,7 @@ def find_most_similar_dataset_image(
 
 
     # 일정 유사도 이상일 때만 매칭된 것으로 간주 (임계값은 실험을 통해 조정)
-    similarity_threshold = 0.45 # 예시 임계값
+    similarity_threshold = 0.4 # 예시 임계값
     if best_match_score >= similarity_threshold and matched_visualization_path:
         print(f"Found similar dataset image: {matched_base_filename} with score: {best_match_score}")
         return matched_original_path, matched_visualization_path, matched_base_filename
