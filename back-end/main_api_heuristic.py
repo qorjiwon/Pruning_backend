@@ -55,6 +55,8 @@ IMAGES_DIR = os.path.join(BASE_DATASET_DIR, 'Images')
 MASKS_DIR = os.path.join(BASE_DATASET_DIR, 'SegmentationClassPNG')
 VISUALIZATION_DIR = os.path.join(BASE_DATASET_DIR, 'SegmentationClassVisualization')
 
+_dataset_histograms_cache = {}  # 파일명 -> 히스토그램 캐시
+
 UPLOAD_DIR_NAME = 'uploaded_images_api' 
 SEGMENTATION_DIR_NAME = 'segmentation_results_api' 
 UPLOAD_DIR = os.path.join(CURRENT_API_SCRIPT_DIR, UPLOAD_DIR_NAME)
@@ -63,6 +65,24 @@ os.makedirs(UPLOAD_DIR, exist_ok=True)
 os.makedirs(SEGMENTATION_DIR, exist_ok=True)
 app.mount(f"/{UPLOAD_DIR_NAME}", StaticFiles(directory=UPLOAD_DIR), name="uploaded_api_files")
 app.mount(f"/{SEGMENTATION_DIR_NAME}", StaticFiles(directory=SEGMENTATION_DIR), name="segmentation_api_files")
+
+# 이 함수를 추가하세요 (이미지 최적화 함수)
+def _optimize_image_size_for_processing(image_bgr: np.ndarray, target_max_dimension: int = 640) -> tuple[np.ndarray, float]:
+    """처리를 위해 이미지 크기를 최적화하고, 원본 대비 비율을 반환합니다."""
+    h, w = image_bgr.shape[:2]
+    max_dim = max(h, w)
+    
+    # 이미 충분히 작은 경우 크기 조정 불필요
+    if max_dim <= target_max_dimension:
+        return image_bgr, 1.0
+    
+    scale_factor = target_max_dimension / max_dim
+    new_w = int(w * scale_factor)
+    new_h = int(h * scale_factor)
+    
+    resized_image = cv2.resize(image_bgr, (new_w, new_h), interpolation=cv2.INTER_AREA)
+    return resized_image, scale_factor
+
 
 def find_most_similar_dataset_image(
     uploaded_image_bgr: np.ndarray,
@@ -75,7 +95,7 @@ def find_most_similar_dataset_image(
     """
     if uploaded_image_bgr is None:
         return None
-
+    
     uploaded_hist = cv2.calcHist([uploaded_image_bgr], [0, 1, 2], None, [8, 8, 8], [0, 256, 0, 256, 0, 256])
     cv2.normalize(uploaded_hist, uploaded_hist, alpha=0, beta=1, norm_type=cv2.NORM_MINMAX)
 
@@ -91,13 +111,17 @@ def find_most_similar_dataset_image(
     for filename in os.listdir(dataset_images_dir):
         if filename.lower().endswith(('.png', '.jpg', '.jpeg')):
             dataset_image_path = os.path.join(dataset_images_dir, filename)
-            dataset_img_bgr = cv2.imread(dataset_image_path)
-
-            if dataset_img_bgr is None:
-                continue
-
-            current_hist = cv2.calcHist([dataset_img_bgr], [0, 1, 2], None, [8, 8, 8], [0, 256, 0, 256, 0, 256])
-            cv2.normalize(current_hist, current_hist, alpha=0, beta=1, norm_type=cv2.NORM_MINMAX)
+            
+            # 캐시 확인
+            if dataset_image_path not in _dataset_histograms_cache:
+                dataset_img_bgr = cv2.imread(dataset_image_path)
+                if dataset_img_bgr is None:
+                    continue
+                current_hist = cv2.calcHist([dataset_img_bgr], [0, 1, 2], None, [8, 8, 8], [0, 256, 0, 256, 0, 256])
+                cv2.normalize(current_hist, current_hist, alpha=0, beta=1, norm_type=cv2.NORM_MINMAX)
+                _dataset_histograms_cache[dataset_image_path] = current_hist
+            else:
+                current_hist = _dataset_histograms_cache[dataset_image_path]
 
             # 히스토그램 비교 (상관관계 방법 사용, 값이 1에 가까울수록 유사)
             score = cv2.compareHist(uploaded_hist, current_hist, cv2.HISTCMP_CORREL)
@@ -206,6 +230,7 @@ def segment_image_using_hsv(image_path: str) -> str:
     return segmentation_path
 
 # --- 공통 분석 로직 함수 ---
+# 함수 내부 시작 부분을 아래 코드로 교체하세요
 def _analyze_image_core_logic(
     original_img_bgr: np.ndarray, 
     seg_mask_bgr: np.ndarray,
@@ -220,13 +245,18 @@ def _analyze_image_core_logic(
     max_virtual_buds = 20 
     max_key_skeleton_points = 10
 
-    cane_binary_mask = extract_binary_mask_from_color(seg_mask_bgr, COLOR_CANE_BGR)
+    # 이미지 크기 최적화 추가
+    optimized_img, scale_factor = _optimize_image_size_for_processing(original_img_bgr)
+    optimized_seg_mask, _ = _optimize_image_size_for_processing(seg_mask_bgr)
+
+    # 최적화된 이미지로 처리 진행
+    cane_binary_mask = extract_binary_mask_from_color(optimized_seg_mask, COLOR_CANE_BGR)
     cane_skeleton_np = get_skeleton_cv(cane_binary_mask)
     
     virtual_buds = find_virtual_buds_heuristic(
         cane_skeleton_np, interval_pixels=bud_interval_pixels, max_buds=max_virtual_buds
     )
-    # recommend_pruning_points_heuristic_cv는 이미 내부적으로 int 변환된 좌표의 딕셔너리 리스트를 반환함
+    
     pruning_points = recommend_pruning_points_heuristic_cv(
         virtual_buds, cane_skeleton_np, pruning_offset_pixels=pruning_offset_pixels,
         max_recommendations=max_pruning_points, neighborhood_radius=neighborhood_radius
@@ -234,12 +264,29 @@ def _analyze_image_core_logic(
     
     key_skeleton_points_list = []
     if include_skeleton_points:
-        # get_key_skeleton_points도 내부적으로 int 변환된 좌표의 딕셔너리 리스트를 반환함
         key_skeleton_points_list = get_key_skeleton_points(cane_skeleton_np, max_points=max_key_skeleton_points)
+    
+    # 결과 좌표를 원본 이미지 크기로 변환
+    if scale_factor != 1.0:
+        # 가상 새싹 좌표 변환
+        for bud in virtual_buds:
+            bud['x'] = int(bud['x'] / scale_factor)
+            bud['y'] = int(bud['y'] / scale_factor)
+        
+        # 가지치기 포인트 좌표 변환
+        for point in pruning_points:
+            point['x'] = int(point['x'] / scale_factor)
+            point['y'] = int(point['y'] / scale_factor)
+        
+        # 스켈레톤 포인트 좌표 변환
+        for point in key_skeleton_points_list:
+            point['x'] = int(point['x'] / scale_factor)
+            point['y'] = int(point['y'] / scale_factor)
     
     response_virtual_buds_list = virtual_buds if include_virtual_buds else []
     
     total_points = len(pruning_points) + len(response_virtual_buds_list) + len(key_skeleton_points_list)
+
 
     # 반환되는 모든 숫자 값들이 파이썬 기본 타입인지 확인 (numpy 타입 방지)
     result = {
@@ -259,6 +306,8 @@ def _analyze_image_core_logic(
     # 시각화 함수에 전달할 골격 마스크 (NumPy 배열) - API 응답에는 포함 안 함
     result["_internal_cane_skeleton_for_drawing"] = cane_skeleton_np 
     return result
+
+
 
 # --- 엔드포인트들 ---
 @app.get("/", summary="API 상태 확인")

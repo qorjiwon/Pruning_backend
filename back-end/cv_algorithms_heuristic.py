@@ -174,19 +174,19 @@ def draw_analysis_on_image(
     target_height, target_width = vis_image.shape[:2]
 
     if cane_skeleton_mask is not None and np.any(cane_skeleton_mask):
-                # cane_skeleton_mask의 크기가 vis_image와 다른지 확인
+        # cane_skeleton_mask의 크기가 vis_image와 다른지 확인
         if cane_skeleton_mask.shape[0] != target_height or cane_skeleton_mask.shape[1] != target_width:
             print(f"Resizing cane_skeleton_mask from {cane_skeleton_mask.shape[:2]} to {(target_height, target_width)}")
-            resized_skeleton_mask = cv2.resize(
+            # 여기가 문제! resized_skeleton_mask를 생성만 하고 실제 사용하지 않음
+            cane_skeleton_mask = cv2.resize(
                 cane_skeleton_mask, 
-                (target_width, target_height), # (너비, 높이) 순서
+                (target_width, target_height),
                 interpolation=cv2.INTER_NEAREST
             )
-        else:
-            resized_skeleton_mask = cane_skeleton_mask
         
-        if np.any(resized_skeleton_mask): # 리사이징 후에도 유효한지 확인
-            vis_image[resized_skeleton_mask > 0] = [255, 100, 100] 
+        # 이제 resize된 마스크를 사용
+        if np.any(cane_skeleton_mask):
+            vis_image[cane_skeleton_mask > 0] = [255, 100, 100] 
 
     if key_skeleton_points:
         for pt in key_skeleton_points: cv2.circle(vis_image, (int(pt['x']), int(pt['y'])), 4, (255, 200, 0), -1)
@@ -202,3 +202,4 @@ def draw_analysis_on_image(
                 alpha = 0.1
                 vis_image = cv2.addWeighted(overlay, alpha, vis_image, 1 - alpha, 0)
     return vis_image
+
