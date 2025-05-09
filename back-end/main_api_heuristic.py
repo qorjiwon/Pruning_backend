@@ -46,8 +46,11 @@ app = FastAPI(
 app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_credentials=True, allow_methods=["*"], allow_headers=["*"])
 
 # --- 경로 설정 ---
-CURRENT_API_SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
-BASE_DATASET_DIR = os.path.join(os.path.dirname(CURRENT_API_SCRIPT_DIR), 'Buds-Dataset-main')
+CURRENT_API_SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__)) # back-end 폴더를 가리킴
+
+# Buds-Dataset-main 폴더가 이제 CURRENT_API_SCRIPT_DIR (back-end 폴더) 내부에 있으므로,
+# 바로 해당 폴더 이름을 join합니다.
+BASE_DATASET_DIR = os.path.join(CURRENT_API_SCRIPT_DIR, 'Buds-Dataset-main')
 IMAGES_DIR = os.path.join(BASE_DATASET_DIR, 'Images')
 MASKS_DIR = os.path.join(BASE_DATASET_DIR, 'SegmentationClassPNG')
 VISUALIZATION_DIR = os.path.join(BASE_DATASET_DIR, 'SegmentationClassVisualization')
@@ -441,7 +444,7 @@ async def upload_live_image_and_analyze_endpoint(
     finally:
         if imageFile and hasattr(imageFile.file, 'close') and not imageFile.file.closed:
             imageFile.file.close()
-            
+
 def _cleanup_temp_files(file_path: Optional[str], seg_mask_path: Optional[str]):
     try:
         if file_path and os.path.exists(file_path): os.remove(file_path); print(f"Cleaned: {file_path}")

@@ -1,4 +1,0 @@
-_background_
-trunk
-cane
-cordon
