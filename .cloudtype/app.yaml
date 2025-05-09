@@ -1,0 +1,18 @@
+name: pruning-backend # 서비스 이름 (Cloudtype 대시보드에 표시될 이름)
+app: python@3.11 # 사용하는 Python 버전에 맞게 (예: 3.9, 3.10, 3.11, 3.12)
+                  # 로컬 Python 버전과 일치시키는 것이 좋음
+options:
+  ports: 8000 # Cloudtype이 이 포트를 기준으로 외부 연결 및 내부 포트 할당
+  # requirements: back-end/requirements.txt # requirements.txt 파일 경로 지정 (필수)
+  start: uvicorn main_api_heuristic:app --host=0.0.0.0 --port=$PORT --workers 1
+  # 또는 Cloudtype이 PORT 환경변수를 제공하지 않는다면 options.ports와 일치:
+  # start: uvicorn main_api_heuristic:app --host=0.0.0.0 --port=8000 --workers 1
+context:
+  git:
+    url: https://github.com/ssum21/Pruning_backend.git # 본인의 GitHub 저장소 URL
+    branch: main # 배포할 브랜치
+  # preset: python-fastapi # 이 프리셋이 있다면 내부적으로 적절한 설정을 해줄 수 있음
+# build: # 빌드 관련 설정이 필요하다면 추가 (예: C 의존성 라이브러리 설치)
+#   apt:
+#     - libgl1-mesa-glx
+#     - libglib2.0-0

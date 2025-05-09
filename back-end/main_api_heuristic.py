@@ -336,6 +336,7 @@ def _cleanup_temp_files(file_path: Optional[str], seg_mask_path: Optional[str]):
         print(f"Error cleaning up generated segmentation mask {seg_mask_path}: {e}")
 
 # --- 서버 실행 ---
+"""
 if __name__ == "__main__":
     import uvicorn
     print(f"--- FastAPI Grape Pruning API with Image Comment (ChatGPT) ---")
@@ -354,3 +355,4 @@ if __name__ == "__main__":
     print("Access API docs at http://localhost:8000/docs")
     
     uvicorn.run("main_api_heuristic:app", host="0.0.0.0", port=8000, reload=True)
+"""
