@@ -6,3 +6,5 @@ Pillow
 openai
 python-multipart
 python-dotenv
+opencv-contrib-python
+Pillow
