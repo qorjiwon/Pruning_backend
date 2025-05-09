@@ -170,7 +170,7 @@ def get_chatgpt_comment_with_image(base64_image_str: Optional[str], num_pruning_
                                        {"type": "image_url", "image_url": {"url": base64_image_str, "detail": "low"}}]}
         ]
         chat_completion = client.chat.completions.create(
-            messages=messages_payload, model="gpt-4o", max_tokens=200, temperature=0.75, n=1
+            messages=messages_payload, model="gpt-4o-mini", max_tokens=185, temperature=0.75, n=1
         )
         return chat_completion.choices[0].message.content.strip()
     except Exception as e:
