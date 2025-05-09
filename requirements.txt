@@ -1,5 +1,8 @@
 fastapi
-uvicorn
-opencv-contrib-python-headless
+uvicorn[standard]
+opencv-python-headless
 numpy
+Pillow
+openai
 python-multipart
+python-dotenv
